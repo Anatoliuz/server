@@ -17,7 +17,7 @@ const docTemplate = `{
     "paths": {
         "/register": {
             "post": {
-                "description": "Registers a new client with their IP and specified port.",
+                "description": "Registers a new client with the provided IP address and port.",
                 "consumes": [
                     "application/json"
                 ],
@@ -30,7 +30,7 @@ const docTemplate = `{
                 "summary": "Register a new client",
                 "parameters": [
                     {
-                        "description": "Port JSON",
+                        "description": "Address and Port JSON",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -66,6 +66,9 @@ const docTemplate = `{
         "main.RegisterRequest": {
             "type": "object",
             "properties": {
+                "ip": {
+                    "type": "string"
+                },
                 "port": {
                     "type": "string"
                 }

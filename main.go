@@ -9,7 +9,6 @@ import (
 	"fmt"
 	httpSwagger "github.com/swaggo/http-swagger"
 	"log"
-	"net"
 	"net/http"
 	"os"
 	_ "server/docs"
@@ -25,7 +24,10 @@ type Client struct {
 	ID      int    `json:"id"`
 	Address string `json:"address"`
 }
+
+// RegisterRequest represents the expected JSON payload for registering a client.
 type RegisterRequest struct {
+	IP   string `json:"ip"`
 	Port string `json:"port"`
 }
 
@@ -64,56 +66,44 @@ func logRequest(handler http.HandlerFunc) http.HandlerFunc {
 
 // registerClient godoc
 // @Summary Register a new client
-// @Description Registers a new client with their IP and specified port.
+// @Description Registers a new client with the provided IP address and port.
 // @Tags clients
 // @Accept json
 // @Produce json
-// @Param request body RegisterRequest true "Port JSON"
+// @Param request body RegisterRequest true "Address and Port JSON"
 // @Success 201 {string} string "Client registered"
 // @Failure 400 {string} string "Invalid request payload"
 // @Failure 500 {string} string "Internal server error"
 // @Router /register [post]
 func registerClient(w http.ResponseWriter, r *http.Request) {
-	// Parse the client's IP address from RemoteAddr
-	clientIP, portFromRemoteAddr, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		log.Printf("Error parsing client IP: %v", err)
-		http.Error(w, "Invalid client IP address", http.StatusInternalServerError)
-		return
-	}
-	log.Printf("Parsed client IP from RemoteAddr: %s, original port: %s", clientIP, portFromRemoteAddr)
-
-	// Parse the JSON request body to get the custom port
-	var requestBody struct {
-		Port string `json:"port"`
-	}
+	// Parse the JSON request body to get the IP and port
+	var requestBody RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
 		log.Printf("Error parsing request body: %v", err)
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
 
-	// Check if the port field was successfully parsed from JSON
-	if requestBody.Port == "" {
-		log.Println("Port field is missing or empty in the request payload")
-		http.Error(w, "Port field is required in JSON payload", http.StatusBadRequest)
+	// Check if the IP or port is missing
+	if requestBody.IP == "" || requestBody.Port == "" {
+		log.Println("IP or port field is missing in the request payload")
+		http.Error(w, "IP and port fields are required", http.StatusBadRequest)
 		return
 	}
-	log.Printf("Custom port from JSON payload: %s", requestBody.Port)
 
-	// Concatenate IP and custom port for database storage
-	clientAddr := fmt.Sprintf("%s:%s", clientIP, requestBody.Port)
-	log.Printf("Storing client address as: %s", clientAddr)
+	// Concatenate IP and port for storage
+	clientAddr := fmt.Sprintf("%s:%s", requestBody.IP, requestBody.Port)
+	log.Printf("Registering client from provided IP: %s", clientAddr)
 
-	// Insert the client address into the database
-	_, err = db.Exec("INSERT INTO clients (address) VALUES ($1)", clientAddr)
+	// Insert the client IP and port into the database
+	_, err := db.Exec("INSERT INTO clients (address) VALUES ($1)", clientAddr)
 	if err != nil {
-		log.Printf("Error inserting client address into database: %v", err)
-		http.Error(w, "Error registering client in database", http.StatusInternalServerError)
+		log.Printf("Error registering client in database: %v", err)
+		http.Error(w, "Error registering client", http.StatusInternalServerError)
 		return
 	}
 
-	log.Printf("Client registered successfully with address: %s", clientAddr)
+	log.Printf("Client registered successfully with IP: %s", clientAddr)
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte("Client registered"))
 }

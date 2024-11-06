@@ -1,6 +1,8 @@
 definitions:
   main.RegisterRequest:
     properties:
+      ip:
+        type: string
       port:
         type: string
     type: object
@@ -11,9 +13,9 @@ paths:
     post:
       consumes:
       - application/json
-      description: Registers a new client with their IP and specified port.
+      description: Registers a new client with the provided IP address and port.
       parameters:
-      - description: Port JSON
+      - description: Address and Port JSON
         in: body
         name: request
         required: true
