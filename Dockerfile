@@ -1,25 +1,31 @@
-# Dockerfile
-
-# Use the official Golang image
-FROM golang:1.20-alpine
+# Use the official Go image for building the application
+FROM golang:1.22-alpine AS builder
 
 # Set the Current Working Directory inside the container
 WORKDIR /app
 
-# Copy go.mod and go.sum files
+# Copy go.mod and go.sum files first to leverage Docker cache
 COPY go.mod go.sum ./
 
-# Download all dependencies. They will be cached if the go.mod and go.sum files are not changed
+# Download dependencies only if go.mod or go.sum has changed
 RUN go mod download
 
-# Copy the source code
+# Copy the rest of the application source code
 COPY . .
 
 # Build the Go app
 RUN go build -o main .
 
-# Expose port 8080 to the outside world
+# Final stage with a minimal image
+FROM alpine:3.18
+WORKDIR /app
+
+# Copy the compiled binary from the builder stage
+COPY --from=builder /app/main .
+COPY --from=builder /app/docs ./docs
+
+# Expose port 8080
 EXPOSE 8080
 
-# Command to run the executable
+# Run the application
 CMD ["./main"]

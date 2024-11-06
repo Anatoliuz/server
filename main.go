@@ -7,10 +7,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	httpSwagger "github.com/swaggo/http-swagger"
 	"log"
 	"net"
 	"net/http"
 	"os"
+	_ "server/docs"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -22,6 +24,9 @@ var db *sql.DB
 type Client struct {
 	ID      int    `json:"id"`
 	Address string `json:"address"`
+}
+type RegisterRequest struct {
+	Port string `json:"port"`
 }
 
 func main() {
@@ -41,6 +46,7 @@ func main() {
 	router.HandleFunc("/register", logRequest(registerClient)).Methods("POST")
 	router.HandleFunc("/clients", logRequest(listClients)).Methods("GET")
 	router.HandleFunc("/client/{id}/exec", logRequest(execCommand)).Methods("POST")
+	router.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
 
 	log.Println("Server starting on port 8080...")
 	log.Fatal(http.ListenAndServe(":8080", router))
@@ -56,6 +62,17 @@ func logRequest(handler http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+// registerClient godoc
+// @Summary Register a new client
+// @Description Registers a new client with their IP and specified port.
+// @Tags clients
+// @Accept json
+// @Produce json
+// @Param request body RegisterRequest true "Port JSON"
+// @Success 201 {string} string "Client registered"
+// @Failure 400 {string} string "Invalid request payload"
+// @Failure 500 {string} string "Internal server error"
+// @Router /register [post]
 func registerClient(w http.ResponseWriter, r *http.Request) {
 	// Parse the client's IP address from RemoteAddr
 	clientIP, portFromRemoteAddr, err := net.SplitHostPort(r.RemoteAddr)

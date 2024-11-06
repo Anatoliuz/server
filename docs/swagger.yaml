@@ -1,0 +1,40 @@
+definitions:
+  main.RegisterRequest:
+    properties:
+      port:
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /register:
+    post:
+      consumes:
+      - application/json
+      description: Registers a new client with their IP and specified port.
+      parameters:
+      - description: Port JSON
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/main.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Client registered
+          schema:
+            type: string
+        "400":
+          description: Invalid request payload
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Register a new client
+      tags:
+      - clients
+swagger: "2.0"
