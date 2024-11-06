@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"time"
@@ -56,17 +57,46 @@ func logRequest(handler http.HandlerFunc) http.HandlerFunc {
 }
 
 func registerClient(w http.ResponseWriter, r *http.Request) {
-	clientAddr := r.RemoteAddr
-	log.Printf("Registering client from address: %s", clientAddr)
-
-	_, err := db.Exec("INSERT INTO clients (address) VALUES ($1)", clientAddr)
+	// Parse the client's IP address from RemoteAddr
+	clientIP, portFromRemoteAddr, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
-		log.Printf("Error registering client: %v", err)
-		http.Error(w, "Error registering client", http.StatusInternalServerError)
+		log.Printf("Error parsing client IP: %v", err)
+		http.Error(w, "Invalid client IP address", http.StatusInternalServerError)
+		return
+	}
+	log.Printf("Parsed client IP from RemoteAddr: %s, original port: %s", clientIP, portFromRemoteAddr)
+
+	// Parse the JSON request body to get the custom port
+	var requestBody struct {
+		Port string `json:"port"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
+		log.Printf("Error parsing request body: %v", err)
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
 
-	log.Printf("Client registered successfully from address: %s", clientAddr)
+	// Check if the port field was successfully parsed from JSON
+	if requestBody.Port == "" {
+		log.Println("Port field is missing or empty in the request payload")
+		http.Error(w, "Port field is required in JSON payload", http.StatusBadRequest)
+		return
+	}
+	log.Printf("Custom port from JSON payload: %s", requestBody.Port)
+
+	// Concatenate IP and custom port for database storage
+	clientAddr := fmt.Sprintf("%s:%s", clientIP, requestBody.Port)
+	log.Printf("Storing client address as: %s", clientAddr)
+
+	// Insert the client address into the database
+	_, err = db.Exec("INSERT INTO clients (address) VALUES ($1)", clientAddr)
+	if err != nil {
+		log.Printf("Error inserting client address into database: %v", err)
+		http.Error(w, "Error registering client in database", http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("Client registered successfully with address: %s", clientAddr)
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte("Client registered"))
 }
