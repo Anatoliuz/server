@@ -10,17 +10,20 @@ services:
     depends_on:
       - db
     env_file:
-      - .env
+      - .env # Load environment variables from .env file
+    environment:
+      DB_DSN: host=db user=${DB_USER} password=${DB_PASSWORD} dbname=${DB_NAME} port=5432 sslmode=disable
 
   db:
     image: postgres:13
     environment:
-      POSTGRES_USER: $DB_USER
-      POSTGRES_PASSWORD: $DB_PASSWORD
-      POSTGRES_DB: $DB_NAME
+      POSTGRES_USER: ${DB_USER:-defaultuser}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-defaultpassword}
+      POSTGRES_DB: ${DB_NAME:-defaultdb}
+    ports:
+      - "5432:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
-      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
 
 volumes:
   db_data:
